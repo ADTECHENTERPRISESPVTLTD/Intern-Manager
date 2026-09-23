@@ -2,9 +2,9 @@ import { Activity, CheckCircle2, Clock3, ListTodo, Play, ShieldCheck, TimerReset
 import Card from "../components/Card";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
-import { intern } from "../constants/app";
 import { formatDuration, useSessionClock } from "../hooks/useSession";
 import { useVerificationStatus } from "../verificationContext";
+import { useAuth } from "../authContext";
 
 const tasks = [
   { id:"TASK-01", title:"DevOps, Deployment & Release Management", project:"Intern Manager", progress:72, status:"In Progress", priority:"High" },
@@ -14,6 +14,7 @@ const tasks = [
 
 export default function Dashboard() {
   const seconds = useSessionClock(16350, true);
+  const { user } = useAuth();
   const { status } = useVerificationStatus();
   // Real value once the backend has answered at least once; "Checking..." only very briefly on load.
   const verifyState = status?.sessionVerificationStatus ?? "CHECKING";
@@ -22,7 +23,7 @@ export default function Dashboard() {
   return (
     <>
       <div className="page-header">
-        <div><div className="eyebrow">Wednesday, 23 September 2026</div><h1>Good morning, {intern.name.split(" ")[0]}.</h1><p>{intern.designation} · {intern.department}</p></div>
+        <div><div className="eyebrow">Wednesday, 23 September 2026</div><h1>Good morning, {user?.name?.split(" ")[0] ?? ""}.</h1><p>{user?.designation}</p></div>
         <StatusBadge tone="success"><Activity size={13}/> Active</StatusBadge>
       </div>
 

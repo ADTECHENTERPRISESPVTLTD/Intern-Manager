@@ -1,17 +1,29 @@
 import { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Bell, ChevronLeft, ChevronRight, CircleHelp, LogOut, Menu, ShieldCheck, X } from "lucide-react";
-import { navItems, adminNavItems, intern } from "../constants/app";
+import { navItems, adminNavItems } from "../constants/app";
 import { PresenceVerification } from "../presence-verification";
 import { useVerificationStatus } from "../verificationContext";
+import { useAuth } from "../authContext";
 
 export default function AppLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobile, setMobile] = useState(false);
-  const [admin, setAdmin] = useState(false);
   const navigate = useNavigate();
-  const items = admin ? adminNavItems : navItems;
+  const location = useLocation();
+  const { user, isAdmin, logout } = useAuth();
   const { service, setStatus, ready } = useVerificationStatus();
+
+  // Driven by the real route (not a separate click-toggle), so it stays correct on
+  // back/forward navigation or a direct URL, and never shows admin nav to a non-admin.
+  const onAdminRoute = location.pathname.startsWith("/admin");
+  const items = onAdminRoute ? adminNavItems : navItems;
+  const initials = user?.name?.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+
+  function doLogout() {
+    logout();
+    navigate("/login", { replace: true });
+  }
 
   return (
     <div className="app-shell">
@@ -21,10 +33,13 @@ export default function AppLayout({ children }) {
           {!collapsed && <div><strong>AD TECH</strong><span>Intern Manager</span></div>}
           <button className="icon-btn mobile-close" onClick={() => setMobile(false)}><X size={19}/></button>
         </div>
-        <div className="portal-switch">
-          <button className={!admin ? "active" : ""} onClick={() => {setAdmin(false); navigate("/")}}>Intern Portal</button>
-          <button className={admin ? "active" : ""} onClick={() => {setAdmin(true); navigate("/admin")}}><ShieldCheck size={15}/> Admin</button>
-        </div>
+        {/* Only an admin ever sees this switch; an intern has no admin routes to switch to. */}
+        {isAdmin && (
+          <div className="portal-switch">
+            <button className={!onAdminRoute ? "active" : ""} onClick={() => navigate("/")}>Intern Portal</button>
+            <button className={onAdminRoute ? "active" : ""} onClick={() => navigate("/admin")}><ShieldCheck size={15}/> Admin</button>
+          </div>
+        )}
         <nav>
           {items.map(([label, path]) => (
             <NavLink key={path} to={path} onClick={() => setMobile(false)} className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>
@@ -33,8 +48,13 @@ export default function AppLayout({ children }) {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          {!collapsed && <div className="mini-profile"><div className="avatar">{intern.initials}</div><div><strong>{intern.name}</strong><span>{admin ? "Administrator view" : intern.designation}</span></div></div>}
-          <button className="nav-link" onClick={() => navigate("/login")}><LogOut size={17}/>{!collapsed && "Logout"}</button>
+          {!collapsed && (
+            <div className="mini-profile">
+              <div className="avatar">{initials}</div>
+              <div><strong>{user?.name ?? "…"}</strong><span>{onAdminRoute ? "Administrator view" : (user?.designation ?? "")}</span></div>
+            </div>
+          )}
+          <button className="nav-link" onClick={doLogout}><LogOut size={17}/>{!collapsed && "Logout"}</button>
         </div>
         <button className="collapse-btn" onClick={() => setCollapsed(!collapsed)}>{collapsed ? <ChevronRight/> : <ChevronLeft/>}</button>
       </aside>
@@ -42,7 +62,7 @@ export default function AppLayout({ children }) {
       <main className="main">
         <header className="topbar">
           <button className="icon-btn mobile-menu" onClick={() => setMobile(true)}><Menu size={21}/></button>
-          <div className="topbar-title">{admin ? "Administration" : "Intern workspace"}</div>
+          <div className="topbar-title">{onAdminRoute ? "Administration" : "Intern workspace"}</div>
           <div className="topbar-actions">
             <button className="icon-btn" onClick={() => navigate("/notifications")}><Bell size={19}/><span className="notification-dot"/></button>
             <button className="help-btn"><CircleHelp size={17}/> Help</button>
@@ -53,14 +73,13 @@ export default function AppLayout({ children }) {
 
       {/* Mounted once here (not per-page). Appears on its own when the backend says a check
           is due; the intern never has to hunt for it on a specific page.
-          Waits for `ready` so it never polls before the (temporary, demo-only) login has a token —
-          polling too early would get a 401 and bounce the intern straight back to /login. */}
+          `ready` is false for admins (see verificationContext) and while login is still resolving. */}
       {ready && (
         <PresenceVerification
           service={service}
           pollIntervalMs={3000}
           onStatusChange={setStatus}
-          onSessionExpired={() => navigate("/login")}
+          onSessionExpired={doLogout}
         />
       )}
     </div>
