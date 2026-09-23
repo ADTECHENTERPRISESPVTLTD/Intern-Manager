@@ -117,6 +117,28 @@ describe("auth and roles", () => {
     assert.deepEqual(bad.body, { success: false, message: "No such endpoint", code: "NOT_FOUND" });
   });
 
+  test("repeated wrong-password attempts against one email get rate-limited (brute-force protection)", async () => {
+    const attempt = () => call("POST", "/api/v1/auth/login", { json: { email: "ratelimit-target@demo.local", password: "wrong" } });
+    let last;
+    for (let i = 0; i < 5; i++) last = await attempt();
+    assert.equal(last.status, 401); // the 5 allowed attempts still go through as normal wrong-password rejections
+    const sixth = await attempt();
+    assert.equal(sixth.status, 429);
+    assert.equal(sixth.body.code, "TOO_MANY_ATTEMPTS");
+  });
+
+  test("a different email is not blocked by someone else's failed attempts", async () => {
+    for (let i = 0; i < 6; i++) await call("POST", "/api/v1/auth/login", { json: { email: "attacker-target@demo.local", password: "wrong" } });
+    const token = await login("intern@demo.local"); // unrelated account: unaffected
+    assert.ok(token);
+  });
+
+  test("a successful login is never rate-limited by earlier typos on the same account", async () => {
+    for (let i = 0; i < 4; i++) await call("POST", "/api/v1/auth/login", { json: { email: "intern@demo.local", password: "wrong" } });
+    const token = await login("intern@demo.local"); // the 5th attempt, this time correct
+    assert.ok(token);
+  });
+
   test("status includes the server clock so the UI countdown ignores the intern's clock", async () => {
     const token = await login("intern@demo.local");
     const { serverTime } = (await call("GET", "/api/v1/verifications/status", { token })).body.data;

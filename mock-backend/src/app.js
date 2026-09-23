@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import express from "express";
 import multer from "multer";
 import { AiRegistrationRejected, AiRejectedFrame, AiUnavailable } from "./aiClient.js";
+import { createRateLimiter } from "./rateLimit.js";
 import {
   activeSeconds,
   createStore,
@@ -28,6 +29,9 @@ const fail = (res, status, code, message) => res.status(status).json({ success: 
 export function createApp({ config, ai, clock }) {
   const store = createStore();
   const tokens = new Map(); // bearer token -> user
+  // 5 attempts per email per minute. Keeps a brute-force script from hammering the login
+  // endpoint; a real person mistyping their password a couple of times is unaffected.
+  const loginLimiter = createRateLimiter({ limit: 5, windowMs: 60_000 });
   const app = express();
   app.disable("x-powered-by");
 
@@ -64,8 +68,15 @@ export function createApp({ config, ai, clock }) {
 
   app.post("/api/v1/auth/login", (req, res) => {
     const { email, password } = req.body ?? {};
+    const key = String(email ?? "").toLowerCase();
+    const limit = loginLimiter.hit(key);
+    if (!limit.allowed) {
+      res.setHeader("Retry-After", String(limit.retryAfterSeconds));
+      return fail(res, 429, "TOO_MANY_ATTEMPTS", "Too many login attempts. Please wait a moment and try again.");
+    }
     const user = USERS.find((u) => u.email === email);
     if (!user || password !== DEMO_PASSWORD) return fail(res, 401, "INVALID_CREDENTIALS", "Incorrect email or password");
+    loginLimiter.reset(key);
     const token = randomUUID();
     tokens.set(token, user);
     ok(res, { token, user: publicUser(user) }, "Logged in");
