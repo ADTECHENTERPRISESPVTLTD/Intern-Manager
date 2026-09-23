@@ -308,14 +308,17 @@ export function createApp({ config, ai, clock }) {
   });
 
   // ---- Dev helpers (demo only) --------------------------------------------------------------
+  // Auth-gated even in the mock: this state (sessions, registered faces) is now reachable over
+  // the LAN for real-device testing, so an unauthenticated reset/clock-jump is a real DoS against
+  // whoever is mid-demo, not just a local convenience.
   if (config.devRoutes) {
-    app.post("/api/v1/dev/advance", (req, res) => {
+    app.post("/api/v1/dev/advance", auth(), (req, res) => {
       const seconds = Number(req.body?.seconds);
       if (!Number.isFinite(seconds) || seconds < 0 || seconds > 86400) return fail(res, 400, "INVALID_REQUEST", "seconds must be 0 to 86400");
       clock.advance(seconds);
       ok(res, { now: iso(clock.now()) }, "Clock advanced");
     });
-    app.post("/api/v1/dev/reset", (req, res) => {
+    app.post("/api/v1/dev/reset", auth(), (req, res) => {
       store.sessions.clear();
       store.checks.length = 0;
       store.templates.clear();

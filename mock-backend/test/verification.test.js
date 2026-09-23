@@ -29,7 +29,7 @@ function startFakeAi() {
 }
 
 // ---- Harness -------------------------------------------------------------------------------
-let fake, aiServer, server, base, clock, config;
+let fake, aiServer, server, base, clock, config, devToken;
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 74, 70, 73, 70, 0, 1]);
 
 before(async () => {
@@ -50,6 +50,10 @@ before(async () => {
   server = app.listen(0, "127.0.0.1");
   await new Promise((r) => server.once("listening", r));
   base = `http://127.0.0.1:${server.address().port}`;
+  // /dev/reset and /dev/advance now require auth (any logged-in mock user) since the mock
+  // server is reachable over the LAN during phone testing; login doesn't depend on store
+  // state, so one token obtained here covers every reset call in this file.
+  devToken = await login("admin@demo.local");
 });
 
 after(() => {
@@ -86,7 +90,7 @@ async function register(token) {
 let intern;
 /** Fresh state, registered intern, active session, and a check that is due. */
 async function dueCheck({ registered = true } = {}) {
-  await call("POST", "/api/v1/dev/reset");
+  await call("POST", "/api/v1/dev/reset", { token: devToken });
   Object.assign(fake, { decision: "MATCH", mode: "ok", delayMs: 0, registerError: null, calls: 0 });
   intern = await login("intern@demo.local");
   if (registered) await register(intern);
@@ -107,6 +111,11 @@ describe("auth and roles", () => {
     const res = await call("GET", "/api/v1/admin/interns", { token });
     assert.equal(res.status, 403);
     assert.equal(res.body.code, "FORBIDDEN");
+  });
+
+  test("dev routes cannot be hit anonymously (they can wipe live demo state)", async () => {
+    assert.equal((await call("POST", "/api/v1/dev/reset")).status, 401);
+    assert.equal((await call("POST", "/api/v1/dev/advance", { json: { seconds: 60 } })).status, 401);
   });
 
   test("responses use the agreed envelope", async () => {
@@ -148,7 +157,7 @@ describe("auth and roles", () => {
 
 describe("scheduling", () => {
   test("nothing is due before the interval, then a check appears", async () => {
-    await call("POST", "/api/v1/dev/reset");
+    await call("POST", "/api/v1/dev/reset", { token: devToken });
     const token = await login("intern@demo.local");
     await call("POST", "/api/v1/sessions/start", { token });
     clock.advance(59);
@@ -164,7 +173,7 @@ describe("scheduling", () => {
   });
 
   test("request is idempotent and 409s when nothing is due", async () => {
-    await call("POST", "/api/v1/dev/reset");
+    await call("POST", "/api/v1/dev/reset", { token: devToken });
     const token = await login("intern@demo.local");
     await call("POST", "/api/v1/sessions/start", { token });
     assert.equal((await call("POST", "/api/v1/verifications/request", { token })).body.code, "VERIFICATION_NOT_DUE");
@@ -175,7 +184,7 @@ describe("scheduling", () => {
   });
 
   test("the interval counts active time only: a break pauses it", async () => {
-    await call("POST", "/api/v1/dev/reset");
+    await call("POST", "/api/v1/dev/reset", { token: devToken });
     const token = await login("intern@demo.local");
     await call("POST", "/api/v1/sessions/start", { token });
     clock.advance(30);
@@ -193,7 +202,7 @@ describe("scheduling", () => {
   });
 
   test("attendanceSystemActive=false turns verification off", async () => {
-    await call("POST", "/api/v1/dev/reset");
+    await call("POST", "/api/v1/dev/reset", { token: devToken });
     config.attendanceSystemActive = false;
     try {
       const token = await login("intern@demo.local");
@@ -348,7 +357,7 @@ describe("verifying", () => {
 
 describe("registration", () => {
   test("registers and never returns the template", async () => {
-    await call("POST", "/api/v1/dev/reset");
+    await call("POST", "/api/v1/dev/reset", { token: devToken });
     const token = await login("intern@demo.local");
     assert.equal((await call("GET", "/api/v1/verifications/registration", { token })).body.data.registered, false);
     const res = await register(token);
@@ -359,7 +368,7 @@ describe("registration", () => {
   });
 
   test("a rejected registration photo comes back as 422 with the reason", async () => {
-    await call("POST", "/api/v1/dev/reset");
+    await call("POST", "/api/v1/dev/reset", { token: devToken });
     fake.registerError = "MULTIPLE_FACES";
     const token = await login("intern@demo.local");
     const res = await register(token);
@@ -416,7 +425,7 @@ describe("session completion and admin visibility", () => {
   });
 
   test("a second session cannot start while one is active", async () => {
-    await call("POST", "/api/v1/dev/reset");
+    await call("POST", "/api/v1/dev/reset", { token: devToken });
     const token = await login("intern@demo.local");
     assert.equal((await call("POST", "/api/v1/sessions/start", { token })).status, 200);
     const again = await call("POST", "/api/v1/sessions/start", { token });
