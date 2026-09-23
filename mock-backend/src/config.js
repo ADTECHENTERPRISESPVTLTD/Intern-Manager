@@ -6,6 +6,9 @@ const num = (value, fallback) => {
 export function loadConfig(env = process.env) {
   return {
     port: num(env.PORT, 4000),
+    // Stays localhost-only by default (safest). Set HOST=0.0.0.0 to test from another device
+    // on the same network, e.g. a real phone.
+    host: env.HOST ?? "127.0.0.1",
     corsOrigins: (env.CORS_ORIGIN ?? "http://localhost:5173,http://localhost:3000")
       .split(",")
       .map((s) => s.trim())

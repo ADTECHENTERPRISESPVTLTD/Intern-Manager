@@ -15,6 +15,7 @@ import Documents from "./pages/Documents";
 import Notifications from "./pages/Notifications";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminInterns from "./pages/AdminInterns";
+import AdminInternProfile from "./pages/AdminInternProfile";
 import AdminTasks from "./pages/AdminTasks";
 import AdminPerformance from "./pages/AdminPerformance";
 import RegisterFace from "./pages/RegisterFace";
@@ -40,6 +41,7 @@ export default function App() {
     <Route path="/notifications" element={<Shell><Notifications/></Shell>}/>
     <Route path="/admin" element={<AdminShell><AdminDashboard/></AdminShell>}/>
     <Route path="/admin/interns" element={<AdminShell><AdminInterns/></AdminShell>}/>
+    <Route path="/admin/interns/:id" element={<AdminShell><AdminInternProfile/></AdminShell>}/>
     <Route path="/admin/tasks" element={<AdminShell><AdminTasks/></AdminShell>}/>
     <Route path="/admin/performance" element={<AdminShell><AdminPerformance/></AdminShell>}/>
     <Route path="*" element={<Navigate to="/" replace/>}/>

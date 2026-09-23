@@ -11,7 +11,7 @@ const app = createApp({
   clock: createClock(),
 });
 
-app.listen(config.port, "127.0.0.1", () => {
-  console.log(`MOCK backend on http://127.0.0.1:${config.port}  (face service: ${config.aiUrl})`);
+app.listen(config.port, config.host, () => {
+  console.log(`MOCK backend on http://${config.host}:${config.port}  (face service: ${config.aiUrl})`);
   console.log("This is a throwaway mock. It is NOT the real Intern-Manager backend.");
 });

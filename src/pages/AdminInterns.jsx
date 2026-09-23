@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, RefreshCw, AlertTriangle } from "lucide-react";
 import Card from "../components/Card";
 import PageHeader from "../components/PageHeader";
@@ -19,6 +20,7 @@ const VERIFICATION_LABEL = {
 
 export default function AdminInterns() {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [interns, setInterns] = useState(null); // null = loading
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -86,7 +88,7 @@ export default function AdminInterns() {
                         <StatusBadge tone={tone}>{label}</StatusBadge>
                         {i.verification.failedCount > 0 && <span className="muted" style={{ marginLeft: 8, fontSize: 12 }}>{i.verification.failedCount} failed</span>}
                       </td>
-                      <td><button className="btn btn-ghost">View profile</button></td>
+                      <td><button className="btn btn-ghost" onClick={() => navigate(`/admin/interns/${i.id}`)}>View profile</button></td>
                     </tr>
                   );
                 })}
