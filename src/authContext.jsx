@@ -11,7 +11,7 @@
  */
 import { createContext, useContext, useEffect, useState } from "react";
 
-const MOCK_BACKEND_URL = import.meta.env.VITE_MOCK_BACKEND_URL || "http://127.0.0.1:4000/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 const STORAGE_KEY = "intern-manager.auth";
 
 const AuthContext = createContext(null);
@@ -47,7 +47,7 @@ export function AuthProvider({ children }) {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${MOCK_BACKEND_URL}/auth/login`, {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

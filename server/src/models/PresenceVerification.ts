@@ -7,6 +7,12 @@ export interface IPresenceVerification extends Document {
   sessionId: Types.ObjectId;
   requestedAt: Date;
   verifiedAt?: Date;
+  expiresAt?: Date;
+  closed?: boolean;
+  closedAt?: Date;
+  attemptsUsed?: number;
+  lastReason?: string | null;
+  failedAttempts?: number;
   status: VerificationStatus;
   provider?: string; // Reference to verification service
   externalReference?: string; // External verification ID
@@ -35,6 +41,30 @@ const presenceVerificationSchema = new Schema<IPresenceVerification>(
       type: Date,
       default: null,
     },
+    expiresAt: {
+      type: Date,
+      default: null,
+    },
+    closed: {
+      type: Boolean,
+      default: false,
+    },
+    closedAt: {
+      type: Date,
+      default: null,
+    },
+    attemptsUsed: {
+      type: Number,
+      default: 0,
+    },
+    lastReason: {
+      type: String,
+      default: null,
+    },
+    failedAttempts: {
+      type: Number,
+      default: 0,
+    },
     status: {
       type: String,
       enum: Object.values(VerificationStatus),
@@ -53,6 +83,7 @@ const presenceVerificationSchema = new Schema<IPresenceVerification>(
     timestamps: true,
   }
 );
+
 
 presenceVerificationSchema.index({ internId: 1, sessionId: 1 });
 presenceVerificationSchema.index({ status: 1 });

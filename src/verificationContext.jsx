@@ -10,7 +10,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { createVerificationService } from "./presence-verification";
 import { useAuth } from "./authContext";
 
-const MOCK_BACKEND_URL = import.meta.env.VITE_MOCK_BACKEND_URL || "http://127.0.0.1:4000/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
 const VerificationContext = createContext(null);
 
@@ -23,7 +23,7 @@ export function VerificationProvider({ children }) {
   const [status, setStatus] = useState(null); // latest status from <PresenceVerification onStatusChange>
   const [registered, setRegistered] = useState(null); // null = not checked yet, true/false once known
 
-  const service = useMemo(() => createVerificationService({ baseUrl: MOCK_BACKEND_URL, getToken: () => token }), [token]);
+  const service = useMemo(() => createVerificationService({ baseUrl: API_BASE_URL, getToken: () => token }), [token]);
 
   // Only an intern with an active session ever needs a presence check; admins never do.
   const ready = isAuthenticated && !isAdmin && Boolean(token);

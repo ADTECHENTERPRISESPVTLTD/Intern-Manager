@@ -47,6 +47,7 @@ const swaggerSpec = swaggerJSDoc({
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use('/api/v1', routes);
+app.use('/api', routes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

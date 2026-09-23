@@ -11,7 +11,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useAuth } from "./authContext";
 
-const MOCK_BACKEND_URL = import.meta.env.VITE_MOCK_BACKEND_URL || "http://127.0.0.1:4000/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
 const SessionContext = createContext(null);
 
@@ -28,7 +28,7 @@ export function SessionProvider({ children }) {
 
   const call = useCallback(
     async (method, path) => {
-      const res = await fetch(`${MOCK_BACKEND_URL}${path}`, { method, headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${API_BASE_URL}${path}`, { method, headers: { Authorization: `Bearer ${token}` } });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.success) throw new Error(json?.message || "Request failed");
       return json.data;

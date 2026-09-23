@@ -6,7 +6,7 @@ import StatusBadge from "../components/StatusBadge";
 import EmptyState from "../components/EmptyState";
 import { useAuth } from "../authContext";
 
-const MOCK_BACKEND_URL = import.meta.env.VITE_MOCK_BACKEND_URL || "http://127.0.0.1:4000/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
 // Real backend value -> what the status badge shows. See docs/verification-contract.md.
 const VERIFICATION_LABEL = {
@@ -27,7 +27,7 @@ export default function AdminInterns() {
     setError("");
     setInterns(null);
     try {
-      const res = await fetch(`${MOCK_BACKEND_URL}/admin/interns`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${API_BASE_URL}/admin/interns`, { headers: { Authorization: `Bearer ${token}` } });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Could not load interns");
       setInterns(json.data);

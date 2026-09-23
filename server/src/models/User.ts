@@ -10,6 +10,8 @@ export interface IUser extends Document {
   role: UserRole;
   status: UserStatus;
   lastLogin?: Date;
+  faceTemplate?: string;
+  faceRegisteredAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -48,6 +50,15 @@ const userSchema = new Schema<IUser>(
       enum: Object.values(UserStatus),
       default: UserStatus.ACTIVE,
     },
+    faceTemplate: {
+      type: String,
+      select: false, // Never return face template by default
+      default: null,
+    },
+    faceRegisteredAt: {
+      type: Date,
+      default: null,
+    },
     lastLogin: {
       type: Date,
     },
@@ -72,11 +83,13 @@ userSchema.methods.comparePassword = async function (
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Remove password from JSON output
+// Remove password and biometrics from JSON output
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.faceTemplate;
   return obj;
 };
 
 export const User = mongoose.model<IUser>('User', userSchema);
+

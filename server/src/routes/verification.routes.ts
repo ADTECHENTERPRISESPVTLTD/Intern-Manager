@@ -1,23 +1,47 @@
 import { Router } from 'express';
-import { z } from 'zod';
+import multer from 'multer';
 import { authenticate } from '../middleware/auth';
 import { authorize } from '../middleware/authorize';
 import { UserRole } from '../constants';
-import { getVerificationHistory, requestVerification, verifySession } from '../controllers/verificationController';
-import { validate } from '../middleware/validate';
-import { mongoIdSchema } from '../validators/common.validator';
+import {
+  getStatus,
+  requestVerification,
+  verifyPresenceFrame,
+  registerFace,
+  getRegistrationStatus,
+  getVerificationHistory,
+  verifySession,
+} from '../controllers/verificationController';
 
-const verificationBodySchema = z.object({
-  sessionId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
-  status: z.enum(['PENDING', 'VERIFYING', 'VERIFIED', 'FAILED', 'EXPIRED', 'UNVERIFIED']).optional(),
-  externalReference: z.string().optional(),
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 3 * 1024 * 1024, // 3 MB max per frame
+    files: 5,
+  },
 });
 
 const router = Router();
 
 router.use(authenticate);
-router.post('/request', validate({ body: verificationBodySchema }), requestVerification);
+
+// Real-time verification status check (polled by frontend)
+router.get('/status', getStatus);
+
+// Explicit trigger / check retrieval
+router.post('/request', requestVerification);
+
+// Verify presence using camera frame
+router.post('/verify', upload.single('frame'), verifyPresenceFrame);
+
+// Register face with 3-5 reference frames
+router.post('/registration', upload.array('frames', 5), registerFace);
+router.get('/registration', getRegistrationStatus);
+
+// Verification history
 router.get('/history', getVerificationHistory);
-router.patch('/:id', authorize(UserRole.ADMIN), validate({ params: z.object({ id: mongoIdSchema }), body: verificationBodySchema }), verifySession);
+
+// Admin manual override
+router.patch('/:id', authorize(UserRole.ADMIN), verifySession);
 
 export default router;

@@ -12,6 +12,9 @@ export interface IWorkSession extends Document {
   completedIntervals: number; // Number of completed 30-second intervals
   totalBreakSeconds: number; // Total break time in seconds
   isOfficial: boolean; // Whether this counts for official attendance
+  verificationStatus: string; // NONE, PENDING, VERIFIED, UNVERIFIED
+  lastVerifiedAt?: Date;
+  nextDueActiveSec?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -61,11 +64,24 @@ const workSessionSchema = new Schema<IWorkSession>(
       type: Boolean,
       default: false,
     },
+    verificationStatus: {
+      type: String,
+      default: 'NONE',
+    },
+    lastVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+    nextDueActiveSec: {
+      type: Number,
+      default: 1800,
+    },
   },
   {
     timestamps: true,
   }
 );
+
 
 workSessionSchema.index({ internId: 1, status: 1 });
 workSessionSchema.index({ internId: 1, startedAt: -1 });
