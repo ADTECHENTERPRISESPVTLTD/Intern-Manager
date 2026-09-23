@@ -6,9 +6,18 @@ import { CameraStage, Spinner, StatusHeading } from "./ui";
 import { ApiError, type VerificationService } from "./verificationService";
 import "./presence-verification.css";
 
-const PHOTOS = 3;
+// The contract (ai-service/README.md, docs/verification-contract.md) supports 3-5 frames;
+// using the full 5 gives the averaged template more angle/lighting variation to match
+// against later, which is exactly what real-world verification needs to be reliable.
+const PHOTOS = 5;
 const REJECTIONS = new Set<string>(["NO_FACE", "MULTIPLE_FACES", "LOW_QUALITY", "INCONSISTENT_FRAMES"]);
-const PROMPTS = ["Look straight at the camera.", "Turn your head slightly to the left.", "Turn your head slightly to the right."];
+const PROMPTS = [
+  "Look straight at the camera.",
+  "Turn your head slightly to the left.",
+  "Turn your head slightly to the right.",
+  "Tilt your head slightly up.",
+  "Tilt your head slightly down.",
+];
 
 type Step =
   | { name: "intro" }
@@ -23,7 +32,7 @@ export interface FaceRegistrationProps {
   onRegistered?: () => void;
 }
 
-/** One-time onboarding step: 3 photos, uploaded together. The photos live in memory only. */
+/** One-time onboarding step: 5 photos, uploaded together. The photos live in memory only. */
 export function FaceRegistration({ service, onRegistered }: FaceRegistrationProps) {
   const camera = useCamera();
   const { start: startCamera, stop: stopCamera, capture } = camera;
