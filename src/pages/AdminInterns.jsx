@@ -1,0 +1,6 @@
+import { Search } from "lucide-react";
+import Card from "../components/Card";
+import PageHeader from "../components/PageHeader";
+import StatusBadge from "../components/StatusBadge";
+const interns=[["INT-001","Akanksha Hajare","DevOps & Deployment Engineer","Active"],["INT-002","Adarsh Gangshettiwar","Backend Developer","Active"],["INT-003","Aadya Dixit","Frontend Developer","Break"],["INT-004","Prajakta Dixit","Lead Frontend Developer","Offline"],["INT-005","Soham Amne","AI Lead","Unverified"]];
+export default function AdminInterns(){return <><PageHeader eyebrow="Administration" title="Interns" description="Open an intern profile to review tasks, sessions, attendance and feedback."/><Card><div className="toolbar"><div className="search"><Search size={17}/><input placeholder="Search interns..."/></div></div><div className="table-wrap"><table><thead><tr><th>ID</th><th>Intern</th><th>Designation</th><th>Status</th><th>Action</th></tr></thead><tbody>{interns.map(x=><tr key={x[0]}><td>{x[0]}</td><td><strong>{x[1]}</strong></td><td>{x[2]}</td><td><StatusBadge>{x[3]}</StatusBadge></td><td><button className="btn btn-ghost">View profile</button></td></tr>)}</tbody></table></div></Card></>};
