@@ -2,6 +2,7 @@ import { Activity, CheckCircle2, Clock3, ListTodo, Play, ShieldCheck, TimerReset
 import Card from "../components/Card";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
+import { useNavigate } from "react-router-dom";
 import { formatDuration } from "../hooks/useSession";
 import { useVerificationStatus } from "../verificationContext";
 import { useWorkSession } from "../sessionContext";
@@ -18,9 +19,17 @@ const STATUS_LABEL = { ACTIVE: "Active", BREAK: "On Break", COMPLETED: "Complete
 export default function Dashboard() {
   const { user } = useAuth();
   const { session, start } = useWorkSession();
-  const { status } = useVerificationStatus();
+  const { status, registered } = useVerificationStatus();
+  const navigate = useNavigate();
   // Real value once the backend has answered at least once; "Checking..." only very briefly on load.
   const verifyState = status?.sessionVerificationStatus ?? "CHECKING";
+
+  // A session with no registered face would just fail its first presence check. Send the
+  // intern to register first, rather than start a session that's guaranteed to interrupt them.
+  function handleStart() {
+    if (registered === false) navigate("/dev-register-face");
+    else start();
+  }
 
   const sessionStatus = session?.status ?? "NOT_STARTED";
   const seconds = session?.activeSeconds ?? 0;
@@ -47,7 +56,9 @@ export default function Dashboard() {
         <div className="session-ring"><div><strong>{completed}</strong><span>/ {total}</span><small>30-sec sessions</small></div></div>
         <div className="session-actions">
           {sessionStatus === "NOT_STARTED" || sessionStatus === "COMPLETED" ? (
-            <button className="btn btn-primary" onClick={start}><Play size={16}/> Start Official Work Session</button>
+            <button className="btn btn-primary" onClick={handleStart}>
+              <Play size={16}/> {registered === false ? "Register Your Face to Start" : "Start Official Work Session"}
+            </button>
           ) : (
             <button className="btn btn-primary" disabled><Play size={16}/> {STATUS_LABEL[sessionStatus] ?? "Work Session Active"}</button>
           )}

@@ -80,6 +80,7 @@ export default function AppLayout({ children }) {
           pollIntervalMs={3000}
           onStatusChange={setStatus}
           onSessionExpired={doLogout}
+          onRegistrationRequired={() => navigate("/dev-register-face")}
         />
       )}
     </div>

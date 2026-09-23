@@ -1,16 +1,26 @@
 import { Play, ShieldCheck, Coffee } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import Card from "../components/Card";
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 import { formatDuration } from "../hooks/useSession";
 import { useWorkSession } from "../sessionContext";
+import { useVerificationStatus } from "../verificationContext";
 
 const BADGE_TONE = { ACTIVE: "success", BREAK: "warning", COMPLETED: "success" };
-const LABEL = { ACTIVE: "Work Session Active", BREAK: "Break Active", COMPLETED: "8-Hour Work Session Completed" };
 
 export default function WorkSession() {
   const { session, error, start, takeBreak, resume } = useWorkSession();
+  const { registered } = useVerificationStatus();
+  const navigate = useNavigate();
   const status = session?.status ?? "NOT_STARTED";
+
+  // Same rule as the Dashboard: don't start a session that will immediately fail its first
+  // presence check for having no registered face.
+  function handleStart() {
+    if (registered === false) navigate("/dev-register-face");
+    else start();
+  }
   const seconds = session?.activeSeconds ?? 0;
   const target = session?.targetSeconds ?? 28800;
   const percent = Math.min(100, Math.round((seconds / target) * 100));
@@ -34,10 +44,14 @@ export default function WorkSession() {
           <div className="progress"><span style={{ width: `${percent}%` }}/></div>
           {error && <p className="login-error" role="alert" style={{ marginTop: 14 }}>{error}</p>}
           <div className="button-row">
-            {status === "NOT_STARTED" && <button className="btn btn-primary" onClick={start}><Play/> Start Official Work Session</button>}
+            {status === "NOT_STARTED" && (
+              <button className="btn btn-primary" onClick={handleStart}>
+                <Play/> {registered === false ? "Register Your Face to Start" : "Start Official Work Session"}
+              </button>
+            )}
             {status === "ACTIVE" && <button className="btn btn-secondary" onClick={takeBreak}><Coffee/> Take Break</button>}
             {status === "BREAK" && <button className="btn btn-primary" onClick={resume}><Play/> Resume Work</button>}
-            {status === "COMPLETED" && <button className="btn btn-primary" onClick={start}><Play/> Start Official Work Session</button>}
+            {status === "COMPLETED" && <button className="btn btn-primary" onClick={handleStart}><Play/> Start Official Work Session</button>}
           </div>
         </Card>
         <div className="stack">
