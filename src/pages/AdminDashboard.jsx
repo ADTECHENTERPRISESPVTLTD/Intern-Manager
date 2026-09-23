@@ -10,6 +10,7 @@ import { useAuth } from "../authContext";
 import { formatDuration } from "../hooks/useSession";
 
 const MOCK_BACKEND_URL = import.meta.env.VITE_MOCK_BACKEND_URL || "http://127.0.0.1:4000/api/v1";
+const SESSION_BADGE_TONE = { ACTIVE: "success", BREAK: "warning", LOCKED: "warning", INCOMPLETE: "danger" };
 
 export default function AdminDashboard() {
   const { token } = useAuth();
@@ -35,7 +36,10 @@ export default function AdminDashboard() {
     total: interns?.length ?? 0,
     active: interns?.filter((i) => i.session?.status === "ACTIVE").length ?? 0,
     onBreak: interns?.filter((i) => i.session?.status === "BREAK").length ?? 0,
-    unverified: interns?.filter((i) => i.verification.status === "UNVERIFIED").length ?? 0,
+    // LOCKED: a failed/expired check paused this session right now - needs a look.
+    locked: interns?.filter((i) => i.session?.status === "LOCKED").length ?? 0,
+    // INCOMPLETE: too many failed checks ended the session; it will not count toward attendance.
+    incomplete: interns?.filter((i) => i.session?.status === "INCOMPLETE").length ?? 0,
     completed: interns?.filter((i) => i.session?.status === "COMPLETED").length ?? 0,
   };
 
@@ -53,7 +57,8 @@ export default function AdminDashboard() {
           <StatCard icon={Users} label="Total interns" value={interns ? stats.total : "…"} detail="Current internship team"/>
           <StatCard icon={Activity} label="Active now" value={interns ? stats.active : "…"} detail="Official work sessions"/>
           <StatCard icon={Coffee} label="On break" value={interns ? stats.onBreak : "…"} detail="Current status"/>
-          <StatCard icon={ShieldAlert} label="Unverified" value={interns ? stats.unverified : "…"} detail="Action may be required"/>
+          <StatCard icon={ShieldAlert} label="Verification paused" value={interns ? stats.locked : "…"} detail="Failed a check, retrying now"/>
+          <StatCard icon={AlertTriangle} label="Incomplete today" value={interns ? stats.incomplete : "…"} detail="Too many failed checks"/>
           <StatCard icon={Clock3} label="Completed today" value={interns ? stats.completed : "…"} detail="Sessions"/>
           <StatCard icon={ListTodo} label="Pending tasks" value="—" detail="Pending Adarsh's real backend"/>
         </div>
@@ -73,7 +78,7 @@ export default function AdminDashboard() {
                     <tr key={i.id} onClick={() => navigate(`/admin/interns/${i.id}`)} style={{ cursor: "pointer" }}>
                       <td><strong>{i.name}</strong></td>
                       <td>{i.designation}</td>
-                      <td><StatusBadge tone={i.session?.status === "ACTIVE" ? "success" : i.session?.status === "BREAK" ? "warning" : "default"}>{i.session?.status ?? "Not started"}</StatusBadge></td>
+                      <td><StatusBadge tone={SESSION_BADGE_TONE[i.session?.status] ?? "default"}>{i.session?.status ?? "Not started"}</StatusBadge></td>
                       <td>{i.session ? formatDuration(i.session.activeSeconds ?? 0) : "—"}</td>
                       <td><StatusBadge tone={i.verification.status === "VERIFIED" ? "success" : i.verification.status === "UNVERIFIED" ? "danger" : "default"}>{i.verification.status}</StatusBadge></td>
                     </tr>

@@ -8,6 +8,8 @@ import {
   createStore,
   nextCheckDueAt,
   openCheck,
+  registerFailedCheck,
+  registerPassedCheck,
   startSession,
   tick,
 } from "./engine.js";
@@ -107,6 +109,8 @@ export function createApp({ config, ai, clock }) {
       completedIntervals: Math.min(Math.floor(active / interval), config.targetSec / interval),
       totalIntervals: config.targetSec / interval,
       officialAttendance: config.attendanceSystemActive,
+      failedCheckCount: s.failedCheckCount,
+      maxFailedChecks: config.maxFailedChecks,
     };
   }
 
@@ -222,10 +226,8 @@ export function createApp({ config, ai, clock }) {
       check.closedAt = now;
       check.verifiedAt = now;
       check.lastReason = null;
-      session.verificationStatus = "VERIFIED";
-      session.lastVerifiedAt = now;
-      session.nextDueActiveSec = active + config.intervalSec;
-      return ok(res, result(), "Presence verified");
+      registerPassedCheck(session, config, now, active);
+      return ok(res, result({ sessionStatus: session.status }), "Presence verified");
     }
 
     check.status = "FAILED";
@@ -234,10 +236,9 @@ export function createApp({ config, ai, clock }) {
     if (check.attemptsUsed >= config.maxAttempts) {
       check.closed = true;
       check.closedAt = now;
-      session.verificationStatus = "UNVERIFIED";
-      session.nextDueActiveSec = active + config.intervalSec;
+      registerFailedCheck(session, config, now);
     }
-    ok(res, result(), "Verification failed");
+    ok(res, result({ sessionStatus: session.status }), "Verification failed");
   });
 
   app.get("/api/v1/verifications/history", auth("INTERN", "ADMIN"), (req, res) => {

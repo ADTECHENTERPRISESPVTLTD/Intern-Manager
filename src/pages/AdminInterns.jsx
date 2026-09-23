@@ -15,8 +15,11 @@ const VERIFICATION_LABEL = {
   FAILED: ["Failed", "danger"],
   UNVERIFIED: ["Unverified", "warning"],
   PENDING: ["Pending", "warning"],
+  INCOMPLETE: ["Incomplete", "danger"],
   NONE: ["Not started", "default"],
 };
+
+const SESSION_BADGE_TONE = { ACTIVE: "success", BREAK: "warning", LOCKED: "warning", INCOMPLETE: "danger" };
 
 export default function AdminInterns() {
   const { token } = useAuth();
@@ -83,7 +86,7 @@ export default function AdminInterns() {
                     <tr key={i.id}>
                       <td><strong>{i.name}</strong></td>
                       <td>{i.designation}</td>
-                      <td><StatusBadge tone={i.session?.status === "ACTIVE" ? "success" : "default"}>{i.session?.status ?? "Not started"}</StatusBadge></td>
+                      <td><StatusBadge tone={SESSION_BADGE_TONE[i.session?.status] ?? "default"}>{i.session?.status ?? "Not started"}</StatusBadge></td>
                       <td>
                         <StatusBadge tone={tone}>{label}</StatusBadge>
                         {i.verification.failedCount > 0 && <span className="muted" style={{ marginLeft: 8, fontSize: 12 }}>{i.verification.failedCount} failed</span>}

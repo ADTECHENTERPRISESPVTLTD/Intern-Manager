@@ -14,8 +14,11 @@ const VERIFICATION_LABEL = {
   FAILED: ["Failed", "danger"],
   UNVERIFIED: ["Unverified", "warning"],
   PENDING: ["Pending", "warning"],
+  INCOMPLETE: ["Incomplete", "danger"],
   NONE: ["Not started", "default"],
 };
+
+const SESSION_BADGE_TONE = { ACTIVE: "success", BREAK: "warning", LOCKED: "warning", INCOMPLETE: "danger" };
 
 async function get(path, token) {
   const res = await fetch(`${MOCK_BACKEND_URL}${path}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -71,7 +74,7 @@ export default function AdminInternProfile() {
               <h1>{intern.name}</h1>
               <p>{intern.designation}</p>
             </div>
-            <StatusBadge tone={intern.session?.status === "ACTIVE" ? "success" : "default"}>
+            <StatusBadge tone={SESSION_BADGE_TONE[intern.session?.status] ?? "default"}>
               {intern.session?.status ?? "Not started"}
             </StatusBadge>
           </div>

@@ -277,17 +277,69 @@ describe("verifying", () => {
     assert.equal(again.body.code, "VERIFICATION_CLOSED");
   });
 
-  test("an unanswered check expires as UNVERIFIED and cannot be answered late", async () => {
+  test("an unanswered check expires, pauses the session, and immediately opens a retry; the expired id cannot be answered late", async () => {
     const check = await dueCheck();
     clock.advance(31);
     const s = (await call("GET", "/api/v1/verifications/status", { token: intern })).body.data;
-    assert.equal(s.current, null);
-    assert.equal(s.sessionVerificationStatus, "UNVERIFIED");
+    assert.notEqual(s.current, null, "a fresh retry check should open right away, not wait for the next interval");
+    assert.notEqual(s.current.verificationId, check.verificationId);
+    assert.equal(s.sessionVerificationStatus, "PENDING");
+    const session = (await call("GET", "/api/v1/sessions/current", { token: intern })).body.data;
+    assert.equal(session.status, "LOCKED");
+    assert.equal(session.failedCheckCount, 1);
+
     const late = await verify(intern, check.verificationId);
     assert.equal(late.status, 409);
     assert.equal(late.body.code, "VERIFICATION_EXPIRED");
     const history = (await call("GET", "/api/v1/verifications/history", { token: intern })).body.data;
-    assert.equal(history.items[0].status, "EXPIRED");
+    assert.equal(history.items[1].status, "EXPIRED"); // items[0] is the new retry, still PENDING
+  });
+
+  test("a locked session's clock stays frozen until the retry passes, then resumes", async () => {
+    await dueCheck(); // registers, starts session, advances 60s so a check is due
+    clock.advance(31); // let the response window (30s) run out -> the check expires, session locks
+    const locked = (await call("GET", "/api/v1/sessions/current", { token: intern })).body.data;
+    assert.equal(locked.status, "LOCKED");
+    const frozenAt = locked.activeSeconds; // credited up to the expiry instant, not a second more
+
+    clock.advance(120); // plenty of wall-clock time passes while locked
+    const stillLocked = (await call("GET", "/api/v1/sessions/current", { token: intern })).body.data;
+    assert.equal(stillLocked.activeSeconds, frozenAt, "still frozen, no matter how long the intern takes to retry");
+
+    fake.decision = "MATCH";
+    const retryCheck = (await call("GET", "/api/v1/verifications/status", { token: intern })).body.data.current;
+    const res = await verify(intern, retryCheck.verificationId);
+    assert.equal(res.body.data.sessionStatus, "ACTIVE");
+    const resumed = (await call("GET", "/api/v1/sessions/current", { token: intern })).body.data;
+    assert.equal(resumed.status, "ACTIVE");
+    assert.equal(resumed.activeSeconds, frozenAt, "resumes from where it froze, no credit for the locked time");
+  });
+
+  test("enough failed checks in one session marks it INCOMPLETE and ends it for the day", async () => {
+    await dueCheck();
+    fake.decision = "NO_MATCH";
+    for (let round = 0; round < 3; round++) {
+      const current = (await call("GET", "/api/v1/verifications/status", { token: intern })).body.data.current;
+      assert.ok(current, `expected a retry check to be open before round ${round}`);
+      let res;
+      for (let attempt = 0; attempt < 3; attempt++) res = await verify(intern, current.verificationId);
+      if (round < 2) assert.equal(res.body.data.sessionStatus, "LOCKED");
+      else assert.equal(res.body.data.sessionStatus, "INCOMPLETE");
+    }
+
+    const session = (await call("GET", "/api/v1/sessions/current", { token: intern })).body.data;
+    assert.equal(session.status, "INCOMPLETE");
+    assert.equal(session.failedCheckCount, 3);
+
+    const status = (await call("GET", "/api/v1/verifications/status", { token: intern })).body.data;
+    assert.equal(status.current, null, "an incomplete session schedules no further checks");
+    assert.equal(status.sessionVerificationStatus, "INCOMPLETE");
+
+    // That session is done and will never resume, but the intern can start a fresh one
+    // (its own failure count starts at zero) - INCOMPLETE ends the session, not the day.
+    const fresh = await call("POST", "/api/v1/sessions/start", { token: intern });
+    assert.equal(fresh.status, 200);
+    assert.equal(fresh.body.data.status, "ACTIVE");
   });
 
   test("an intern who never registered a face gets NOT_REGISTERED and keeps all attempts", async () => {
@@ -414,12 +466,15 @@ describe("session completion and admin visibility", () => {
     const admin = await login("admin@demo.local");
     const list = (await call("GET", "/api/v1/admin/interns", { token: admin })).body.data;
     const row = list.find((i) => i.id === "intern-1");
-    assert.equal(row.verification.status, "UNVERIFIED");
+    // The expired check pauses the session and opens an immediate retry, so the admin sees
+    // PENDING (a new check is already open), not a dead-end UNVERIFIED with nothing to do.
+    assert.equal(row.verification.status, "PENDING");
+    assert.equal(row.session.status, "LOCKED");
     assert.equal(row.verification.failedCount, 1);
     assert.equal(row.verification.unverifiedCount, 1);
 
     const asAdmin = await call("GET", "/api/v1/verifications/history?internId=intern-1", { token: admin });
-    assert.equal(asAdmin.body.data.total, 1);
+    assert.equal(asAdmin.body.data.total, 2); // the expired check, plus the retry it immediately opened
     const snoop = await call("GET", "/api/v1/verifications/history?internId=intern-1", { token: await login("intern2@demo.local") });
     assert.equal(snoop.status, 403);
   });

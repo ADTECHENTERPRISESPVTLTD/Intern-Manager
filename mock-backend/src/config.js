@@ -19,6 +19,9 @@ export function loadConfig(env = process.env) {
     intervalSec: num(env.VERIFICATION_INTERVAL_SECONDS, 30 * 60),
     windowSec: num(env.VERIFICATION_WINDOW_SECONDS, 5 * 60),
     maxAttempts: num(env.VERIFICATION_MAX_ATTEMPTS, 3),
+    // After this many failed/expired checks in one session, the session ends as INCOMPLETE
+    // instead of pausing again - it stops counting toward attendance for the day.
+    maxFailedChecks: num(env.VERIFICATION_MAX_FAILED_CHECKS, 3),
     targetSec: num(env.SESSION_TARGET_SECONDS, 8 * 60 * 60),
     attendanceSystemActive: env.ATTENDANCE_SYSTEM_ACTIVE !== "false",
     devRoutes: env.MOCK_DEV_ROUTES !== "false",

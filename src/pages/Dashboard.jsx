@@ -14,7 +14,8 @@ const tasks = [
   { id:"TASK-03", title:"Frontend API Service Architecture", project:"Intern Manager", progress:40, status:"In Progress", priority:"High" }
 ];
 
-const STATUS_LABEL = { ACTIVE: "Active", BREAK: "On Break", COMPLETED: "Completed" };
+const STATUS_LABEL = { ACTIVE: "Active", BREAK: "On Break", COMPLETED: "Completed", LOCKED: "Verification required", INCOMPLETE: "Incomplete" };
+const BADGE_TONE = { ACTIVE: "success", LOCKED: "warning", INCOMPLETE: "danger" };
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -42,20 +43,20 @@ export default function Dashboard() {
     <>
       <div className="page-header">
         <div><div className="eyebrow">Wednesday, 23 September 2026</div><h1>Good morning, {user?.name?.split(" ")[0] ?? ""}.</h1><p>{user?.designation}</p></div>
-        <StatusBadge tone={sessionStatus === "ACTIVE" ? "success" : "default"}><Activity size={13}/> {STATUS_LABEL[sessionStatus] ?? "Not started"}</StatusBadge>
+        <StatusBadge tone={BADGE_TONE[sessionStatus] ?? "default"}><Activity size={13}/> {STATUS_LABEL[sessionStatus] ?? "Not started"}</StatusBadge>
       </div>
 
       <div className="hero-session">
         <div className="session-copy">
           <div className="eyebrow">Official work session</div>
-          <h2>{sessionStatus === "BREAK" ? "On Break" : formatDuration(seconds)}</h2>
+          <h2>{sessionStatus === "BREAK" ? "On Break" : sessionStatus === "LOCKED" ? "Paused" : formatDuration(seconds)}</h2>
           <div className="session-target"><span>Official target</span><strong>{formatDuration(target)}</strong></div>
           <div className="progress"><span style={{width:`${percent}%`}}/></div>
           <div className="progress-meta"><span>{percent}% complete</span><span>Backend authoritative</span></div>
         </div>
         <div className="session-ring"><div><strong>{completed}</strong><span>/ {total}</span><small>30-sec sessions</small></div></div>
         <div className="session-actions">
-          {sessionStatus === "NOT_STARTED" || sessionStatus === "COMPLETED" ? (
+          {sessionStatus === "NOT_STARTED" || sessionStatus === "COMPLETED" || sessionStatus === "INCOMPLETE" ? (
             <button className="btn btn-primary" onClick={handleStart}>
               <Play size={16}/> {registered === false ? "Register Your Face to Start" : "Start Official Work Session"}
             </button>
