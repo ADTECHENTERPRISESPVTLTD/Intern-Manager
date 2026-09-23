@@ -132,6 +132,14 @@ export const SESSION_CONSTANTS = {
   HEARTBEAT_TIMEOUT_SECONDS: 120, // 2 minutes without heartbeat = stale
 } as const;
 
+// --- Verification Constants ---
+export const VERIFICATION_CONSTANTS = {
+  WINDOW_MINUTES: 5, // time allowed to complete a due check before it EXPIRES
+  MAX_ATTEMPTS: 3, // failed frame submissions allowed before a check closes as UNVERIFIED
+  MIN_REGISTRATION_FRAMES: 3,
+  MAX_REGISTRATION_FRAMES: 5,
+} as const;
+
 // --- API Constants ---
 export const API_PREFIX = '/api/v1';
 

@@ -52,7 +52,9 @@ export const env: EnvConfig = {
   JWT_REFRESH_EXPIRES_IN: getEnvVar('JWT_REFRESH_EXPIRES_IN', '30d'),
   FRONTEND_URL: getEnvVar('FRONTEND_URL', 'http://localhost:3000'),
   CORS_ORIGIN: getEnvVar('CORS_ORIGIN', 'http://localhost:3000'),
-  FACE_VERIFICATION_URL: getEnvVar('FACE_VERIFICATION_URL', 'http://localhost:8000/api/verify'),
+  // Base URL of Soham's face service (ai-service/); this code appends /v1/register and /v1/verify.
+  // See ai-service/README.md for the real contract.
+  FACE_VERIFICATION_URL: getEnvVar('FACE_VERIFICATION_URL', 'http://127.0.0.1:5001'),
   FACE_VERIFICATION_KEY: getEnvVar('FACE_VERIFICATION_KEY', ''),
   FACE_VERIFICATION_ENABLED: getBoolEnv('FACE_VERIFICATION_ENABLED', false),
   ATTENDANCE_SYSTEM_ACTIVE: getBoolEnv('ATTENDANCE_SYSTEM_ACTIVE', false),
