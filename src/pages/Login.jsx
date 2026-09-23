@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { LockKeyhole, ShieldCheck, AlertCircle } from "lucide-react";
 import { useAuth } from "../authContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, loading, error } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -12,7 +13,12 @@ export default function Login() {
   async function submit(e) {
     e.preventDefault();
     const user = await login(email, password);
-    if (user) navigate(user.role === "ADMIN" ? "/admin" : "/", { replace: true });
+    if (!user) return;
+    // RequireAuth sends unauthenticated visitors here with { state: { from: location } } so a
+    // direct link (e.g. /dev-register-face) lands where it was headed, not always on Dashboard.
+    const from = location.state?.from;
+    const dest = from ? `${from.pathname}${from.search ?? ""}` : (user.role === "ADMIN" ? "/admin" : "/");
+    navigate(dest, { replace: true });
   }
 
   return (
