@@ -12,13 +12,22 @@ import {
   tick,
 } from "./engine.js";
 
-// Demo accounts. Obviously fake: this whole folder is a throwaway mock.
+// Demo and AD TECH team accounts
 const USERS = [
-  { id: "intern-1", role: "INTERN", name: "Demo Intern", email: "intern@demo.local", designation: "Frontend Intern" },
-  { id: "intern-2", role: "INTERN", name: "Second Intern", email: "intern2@demo.local", designation: "Backend Intern" },
-  { id: "admin-1", role: "ADMIN", name: "Demo Admin", email: "admin@demo.local", designation: "Administrator" },
+  { id: "admin-1", role: "ADMIN", name: "Admin User", email: "admin@adtech.local", designation: "Platform Administrator" },
+  { id: "intern-akanksha", role: "INTERN", name: "Akanksha Hajare", email: "akanksha@adtech.local", designation: "Frontend Developer" },
+  { id: "intern-adarsh", role: "INTERN", name: "Adarsh Gangshettiwar", email: "adarsh@adtech.local", designation: "Lead Backend Developer" },
+  { id: "intern-soham", role: "INTERN", name: "Soham Amne", email: "soham@adtech.local", designation: "AI & Integration Engineer" },
+  { id: "intern-prajakta", role: "INTERN", name: "Prajakta", email: "prajakta@adtech.local", designation: "UI/UX Designer" },
+  { id: "intern-yuragi", role: "INTERN", name: "Yuragi", email: "yuragi@adtech.local", designation: "Full Stack Developer" },
+  { id: "intern-aadya", role: "INTERN", name: "Aadya", email: "aadya@adtech.local", designation: "Quality Assurance Engineer" },
+  { id: "intern-kalyani", role: "INTERN", name: "Kalyani", email: "kalyani@adtech.local", designation: "Backend Developer" },
+  { id: "intern-demo", role: "INTERN", name: "Demo Intern", email: "intern@demo.local", designation: "Frontend Intern" },
+  { id: "intern-demo-2", role: "INTERN", name: "Second Intern", email: "intern2@demo.local", designation: "Backend Intern" },
+  { id: "admin-demo", role: "ADMIN", name: "Demo Admin", email: "admin@demo.local", designation: "Administrator" },
 ];
-const DEMO_PASSWORD = "demo123";
+const VALID_PASSWORDS = new Set(["Password123!", "AdminPass123!", "demo123"]);
+
 
 const iso = (ms) => (ms == null ? null : new Date(ms).toISOString());
 const isJpeg = (buf) => buf?.length > 2 && buf[0] === 0xff && buf[1] === 0xd8;
@@ -74,8 +83,8 @@ export function createApp({ config, ai, clock }) {
       res.setHeader("Retry-After", String(limit.retryAfterSeconds));
       return fail(res, 429, "TOO_MANY_ATTEMPTS", "Too many login attempts. Please wait a moment and try again.");
     }
-    const user = USERS.find((u) => u.email === email);
-    if (!user || password !== DEMO_PASSWORD) return fail(res, 401, "INVALID_CREDENTIALS", "Incorrect email or password");
+    const user = USERS.find((u) => u.email.toLowerCase() === key);
+    if (!user || !VALID_PASSWORDS.has(password)) return fail(res, 401, "INVALID_CREDENTIALS", "Incorrect email or password");
     loginLimiter.reset(key);
     const token = randomUUID();
     tokens.set(token, user);

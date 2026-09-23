@@ -10,6 +10,8 @@ import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFound';
 import routes from './routes';
 import { healthCheck } from './controllers/healthController';
+import { isDatabaseConnected } from './config/database';
+import devFallbackRouter from './fallback/inMemoryDevRouter';
 
 export const app = express();
 
@@ -46,8 +48,19 @@ const swaggerSpec = swaggerJSDoc({
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-app.use('/api/v1', routes);
-app.use('/api', routes);
+app.use('/api/v1', (req, res, next) => {
+  if (isDatabaseConnected()) {
+    return routes(req, res, next);
+  }
+  return devFallbackRouter(req, res, next);
+});
+
+app.use('/api', (req, res, next) => {
+  if (isDatabaseConnected()) {
+    return routes(req, res, next);
+  }
+  return devFallbackRouter(req, res, next);
+});
 
 app.use(notFoundHandler);
 app.use(errorHandler);

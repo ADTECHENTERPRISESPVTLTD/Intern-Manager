@@ -1,13 +1,19 @@
 import mongoose from 'mongoose';
 import { env } from './env';
 
-export const connectDatabase = async (): Promise<void> => {
+export const isDatabaseConnected = (): boolean => mongoose.connection.readyState === 1;
+
+export const connectDatabase = async (): Promise<boolean> => {
   try {
-    const conn = await mongoose.connect(env.MONGODB_URI);
+    const conn = await mongoose.connect(env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 2500,
+    });
     console.log(`✅ MongoDB connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error('❌ MongoDB connection error:', error);
-    process.exit(1);
+    return true;
+  } catch (error: any) {
+    console.warn(`⚠️ MongoDB connection unavailable (${error?.message || error}).`);
+    console.warn(`⚡ Starting AD TECH Backend in resilient In-Memory Development Mode on port ${env.PORT}.`);
+    return false;
   }
 
   mongoose.connection.on('error', (err) => {
@@ -20,6 +26,9 @@ export const connectDatabase = async (): Promise<void> => {
 };
 
 export const disconnectDatabase = async (): Promise<void> => {
-  await mongoose.disconnect();
-  console.log('MongoDB disconnected');
+  if (isDatabaseConnected()) {
+    await mongoose.disconnect();
+    console.log('MongoDB disconnected');
+  }
 };
+
