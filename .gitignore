@@ -6,8 +6,19 @@ node_modules/
 .env.local
 .env.production
 
-# Build
+# Build outputs
+dist/
 server/dist/
+
+# Python / AI Service
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+*.egg-info/
 
 # IDE
 .vscode/
@@ -21,8 +32,9 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-# Coverage
+# Coverage / Testing
 coverage/
 
 # Temp
 tmp/
+
