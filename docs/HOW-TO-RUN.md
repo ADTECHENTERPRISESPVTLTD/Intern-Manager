@@ -88,11 +88,57 @@ npm run dev
 ## Try it
 
 1. Log in as `intern@demo.local` / `demo123`. Allow the camera when asked.
-2. **Register your face** (3 photos). This happens once.
+2. **Register your face** (5 photos, from a few angles). This happens once.
 3. Click **Start Official Work Session**, then **Skip ahead 30 s**. The popup appears by itself.
 4. Click **Verify Presence**, then **Verify Now**. You should see **Presence Verified**.
 
 The buttons under "Demo controls" fast-forward the *server's* clock so you never wait 30 minutes. The full walkthrough for recording a video is in `docs/DEMO-SCRIPT.md`.
+
+## Running the real Intern-Manager app instead of the standalone demo
+
+Everything above runs the standalone `presence-verification/` demo page. To see the feature inside
+Akanksha's actual app (`Intern-Manager/`) - the real login, dashboard, admin pages, and the
+enforcement behavior below - run that instead:
+
+```powershell
+# Terminal 1 and 2: ai-service and mock-backend, same as above
+
+# Terminal 3: the real app
+cd Intern-Manager
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`. This talks to the mock-backend directly over plain HTTP, which is
+fine on the same machine.
+
+**To test on a phone (or any second device) on the same network**, the browser's camera API
+requires `https://` for any address that isn't `localhost` - a plain `http://<LAN-IP>` link will
+show "Camera Not Supported" with no way through. Start both servers in HTTPS mode instead:
+
+```powershell
+# mock-backend
+$env:HOST="0.0.0.0"; $env:HTTPS="1"; npm start
+# (first time only) generate a cert: scripts\generate-local-cert.sh <your-lan-ip>
+
+# Intern-Manager
+$env:VITE_HTTPS="1"; npm run dev
+```
+
+The frontend calls the backend through Vite's dev-server proxy (`/api/*` in `vite.config.js`,
+proxied to `MOCK_BACKEND_TARGET`, default `https://127.0.0.1:4000`) rather than a separate
+cross-origin request - this means there is exactly **one** self-signed-certificate warning to
+accept in the browser, not two. Open `https://<your-lan-ip>:5173` on the phone, accept that one
+warning, and log in as usual.
+
+### Enforcement: a failed check pauses the session, not just logs it
+
+Unlike the standalone demo, the real app's mock-backend does not just record a failed or expired
+check as a flag for admins - it actually pauses the session (`LOCKED`, clock frozen, exactly like
+a break) and opens a new check immediately so the intern can retry. After
+`VERIFICATION_MAX_FAILED_CHECKS` (default 3) failed checks in one session, the session ends as
+`INCOMPLETE` and does not count toward attendance; the intern can start a fresh session right
+away. See `mock-backend/src/engine.js` for the state machine.
 
 ## Running the tests
 
@@ -119,11 +165,15 @@ The real-browser run plays a video file as a fake webcam. It saves screenshots t
 | `VERIFICATION_INTERVAL_SECONDS` | backend | Active work time between checks | 30 | 1800 |
 | `VERIFICATION_WINDOW_SECONDS` | backend | Time allowed to answer a check | 120 | 300 |
 | `VERIFICATION_MAX_ATTEMPTS` | backend | Tries per check | 3 | 3 |
+| `VERIFICATION_MAX_FAILED_CHECKS` | mock backend | Failed/expired checks allowed before the session ends as `INCOMPLETE` | 3 | n/a |
 | `SESSION_TARGET_SECONDS` | backend | Official work target | 28800 | 28800 |
 | `ATTENDANCE_SYSTEM_ACTIVE` | backend | `false` = testing mode, checks off | true | true |
-| `MOCK_DEV_ROUTES` | mock only | Enables the time-skip buttons. **Never on a real backend.** | true | n/a |
+| `MOCK_DEV_ROUTES` | mock only | Enables the time-skip buttons. **Never on a real backend.** They require a valid login token, same as every other route - an unauthenticated call gets `401`. | true | n/a |
 | `CORS_ORIGIN` | backend | Allowed website address(es) | `http://localhost:5173` | none |
 | `VITE_API_BASE_URL` | demo page | Backend address | `http://127.0.0.1:4000/api/v1` | none |
+| `VITE_HTTPS` | Intern-Manager frontend | `1` serves over a local self-signed HTTPS cert, needed for camera access from a phone/second device | unset | n/a |
+| `HTTPS` / `HOST` | mock backend | `HTTPS=1` serves over the same self-signed cert; `HOST=0.0.0.0` binds beyond `localhost` so another device can reach it | unset / `127.0.0.1` | n/a |
+| `MOCK_BACKEND_TARGET` | Intern-Manager frontend | Where Vite's dev-server proxy forwards `/api/*` | `http(s)://127.0.0.1:4000` | n/a |
 | `MATCH_THRESHOLD`, `MIN_FACE_PX`, `MIN_SHARPNESS`, `RATE_LIMIT_PER_MINUTE` | ai-service | Matching strictness and limits. See `ai-service/README.md`. | defaults | defaults |
 
 Each folder has a `.env.example` with placeholders only. **Never commit a real `.env`.**

@@ -13,9 +13,11 @@ Target length: **5 to 6 minutes**. Record the screen at 1280x720 with your voice
   npm run dev
   ```
   (The script starts the face service, mock backend and the old standalone demo page on :5173. Since Akanksha's real app also wants :5173, either skip the standalone demo — run `scripts\start-demo.ps1 -FaceServiceOnly` plus the mock backend yourself, per `docs/HOW-TO-RUN.md` — or stop the standalone demo's Vite process and start `Intern-Manager`'s instead.)
-- [ ] Reset the demo data (the mock forgets everything on restart, or run this):
+- [ ] Reset the demo data (the mock forgets everything on restart, or run this — `/dev/reset` now
+  requires a login token, same as every other route, so log in first):
   ```powershell
-  Invoke-RestMethod -Method Post http://127.0.0.1:4000/api/v1/dev/reset
+  $token = (Invoke-RestMethod -Method Post http://127.0.0.1:4000/api/v1/auth/login -ContentType "application/json" -Body '{"email":"admin@demo.local","password":"demo123"}').data.token
+  Invoke-RestMethod -Method Post http://127.0.0.1:4000/api/v1/dev/reset -Headers @{ Authorization = "Bearer $token" }
   ```
 - [ ] Open **http://localhost:5173** in Chrome (not an IP address; the camera needs `localhost`)
 - [ ] Close other apps that use the camera (Teams, Zoom, Meet)
@@ -35,8 +37,8 @@ Target length: **5 to 6 minutes**. Record the screen at 1280x720 with your voice
 - **Do:** type a wrong password first, show the real error message. Then log in correctly as `intern@demo.local` / `demo123`.
 - **Say:** "That error came from the backend, not a hardcoded message. Now the real intern account."
 - **See:** lands on the dashboard, sidebar shows the real name from the backend, not a hardcoded one.
-- **Do:** go to `/dev-register-face` (a temporary page — the real onboarding step is Akanksha's to place properly later, e.g. inside Profile). Click **Start Camera**, then **Capture Photo** three times (straight, slightly left, slightly right).
-- **Say:** "First-time setup: the intern registers their face with three photos. The system keeps only a numeric template, encrypted, not the photos."
+- **Do:** go to `/dev-register-face` (a temporary page — the real onboarding step is Akanksha's to place properly later, e.g. inside Profile). Click **Start Camera**, then **Capture Photo** five times (straight, slightly left, slightly right, slightly up, slightly down).
+- **Say:** "First-time setup: the intern registers their face with five photos from different angles, for a more reliable match later. The system keeps only a numeric template, encrypted, not the photos."
 - **See:** camera preview with an oval guide → "Face Registered" with a green dot → back on the dashboard.
 
 ### 3. Start the work session, notification appears (30 s)
@@ -59,10 +61,13 @@ Skip ahead 30 s again to get a new check each time.
 - **Say:** "If the camera is blocked, the intern gets clear instructions, and it does not count as a failed attempt."
 - **See:** "Camera Access Required" and "This does not count as a failed attempt." Set the camera back to **Allow** afterwards.
 
-### 7. Presence Unverified (30 s)
-- **Do:** either fail three times in a row (cover the camera and press Try Again twice), or ignore a due check and click **Skip ahead 5 min**.
-- **Say:** "If the intern doesn't verify, the backend records it as unverified and the dashboard shows Presence Unverified. It is never silently marked as verified."
-- **See:** "Presence Unverified" in the popup, and the session card label changes to **Presence Unverified**.
+### 7. A failed check actually pauses the session (35 s)
+- **Do:** cover the camera and fail all 3 attempts on a due check (or ignore it until it expires).
+- **Say:** "This is not just a flag for later — a failed or missed check pauses the session right now, exactly like a break, and a new check opens immediately so the intern can retry. Nothing here counts as attendance while it's paused."
+- **See:** the Work Session page shows **Paused** / "Verification required", the timer stops moving, and the popup reappears on its own. Verify successfully this time.
+- **Say:** "Passing it resumes right from where it froze — no credit for the paused time."
+- **See:** the timer resumes.
+- *(Optional, if time allows: fail 3 checks in a row instead of 1, to show the session end as **Incomplete** and a "Start Official Work Session" button to begin fresh — that session's time never counts toward attendance.)*
 
 ### 8. Break pauses the check (25 s)
 - **Do:** click **Take Break**, then **Skip ahead 5 min**, wait 4 seconds. Then **Resume Work**.

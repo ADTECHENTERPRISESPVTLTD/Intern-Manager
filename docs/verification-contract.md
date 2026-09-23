@@ -108,7 +108,11 @@ Edge cases (implemented in `mock-backend/`, proposed for the real backend):
 - **Check already finished:** 409 `VERIFICATION_CLOSED`, or 409 `VERIFICATION_EXPIRED` if the window lapsed.
 - **Not a JPEG:** 400 `INVALID_FRAME`. **Frame over 300 KB:** 413 `FRAME_TOO_LARGE`. Neither uses an attempt.
 
-On a rejected frame: `status: "FAILED"` (with `reason`) while `attemptsRemaining > 0` and the window is still open, meaning the intern can retry. When attempts run out or the window closes, the check is closed and the session's `verificationStatus` becomes `UNVERIFIED`.
+On a rejected frame: `status: "FAILED"` (with `reason`) while `attemptsRemaining > 0` and the window is still open, meaning the intern can retry.
+
+**When attempts run out or the window closes** (implemented in `mock-backend/`; see `src/engine.js`), the check does not just close quietly - it pauses the session, exactly like a break: `session.status` becomes `LOCKED`, `activeSeconds` stops accruing, and a new check opens immediately so the intern can retry right away without waiting for the next scheduled interval. Passing that retry resumes the session from the exact point it froze - no credit for the paused time. This repeats until either the intern passes a check, or they accumulate `VERIFICATION_MAX_FAILED_CHECKS` (default 3) failed/expired checks in that session, at which point `session.status` becomes `INCOMPLETE`: no further checks are scheduled, and that session's time does not count toward attendance. The intern can start a new session immediately - only the failed session is void, not the rest of the day.
+
+`sessionVerificationStatus` in the responses above reflects this: it is `"PENDING"` again almost immediately after a failure (the retry check), not left sitting at `"UNVERIFIED"` - `session.status: "LOCKED"` (from `GET /sessions/current`) is what actually says the clock is paused.
 
 ### 5.4 `GET /verifications/history?internId=&from=&to=&page=` (INTERN own, ADMIN any)
 ```json
@@ -117,7 +121,7 @@ On a rejected frame: `status: "FAILED"` (with `reason`) while `attemptsRemaining
 ```
 
 ### 5.5 Face registration (PROPOSED; not named in any doc yet)
-- `POST /verifications/registration` (INTERN or ADMIN for an intern): `multipart` with 3 to 5 frames. Response: `{ "registered": true }`. No template is returned.
+- `POST /verifications/registration` (INTERN or ADMIN for an intern): `multipart` with 3 to 5 frames (the UI always sends 5, from 5 angles - straight, left, right, up, down - for a more robust averaged template; the API still accepts anywhere in the 3-5 range). Response: `{ "registered": true }`. No template is returned.
 - `GET /verifications/registration` returns `{ "registered": true|false, "registeredAt": "…" }`.
 
 ### 5.6 Admin data (Akanksha's admin table and profile)
