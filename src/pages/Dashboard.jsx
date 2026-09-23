@@ -2,10 +2,9 @@ import { Activity, CheckCircle2, Clock3, ListTodo, Play, ShieldCheck, TimerReset
 import Card from "../components/Card";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
-import VerificationModal from "../components/VerificationModal";
 import { intern } from "../constants/app";
 import { formatDuration, useSessionClock } from "../hooks/useSession";
-import { useState } from "react";
+import { useVerificationStatus } from "../verificationContext";
 
 const tasks = [
   { id:"TASK-01", title:"DevOps, Deployment & Release Management", project:"Intern Manager", progress:72, status:"In Progress", priority:"High" },
@@ -15,11 +14,11 @@ const tasks = [
 
 export default function Dashboard() {
   const seconds = useSessionClock(16350, true);
-  const [verify, setVerify] = useState(false);
-  const [verifyState, setVerifyState] = useState("UNVERIFIED");
+  const { status } = useVerificationStatus();
+  // Real value once the backend has answered at least once; "Checking..." only very briefly on load.
+  const verifyState = status?.sessionVerificationStatus ?? "CHECKING";
   const completed = 545;
   const percent = Math.round((seconds / 28800) * 100);
-  const doVerify = () => { setVerifyState("VERIFIED"); };
   return (
     <>
       <div className="page-header">
@@ -38,7 +37,6 @@ export default function Dashboard() {
         <div className="session-ring"><div><strong>{completed}</strong><span>/ 960</span><small>30-sec sessions</small></div></div>
         <div className="session-actions">
           <button className="btn btn-primary"><Play size={16}/> Work Session Active</button>
-          <button className="btn btn-secondary" onClick={() => setVerify(true)}><ShieldCheck size={16}/> Verify Presence</button>
         </div>
       </div>
 
@@ -62,11 +60,11 @@ export default function Dashboard() {
         </Card>
         <Card>
           <div className="card-header"><div><div className="eyebrow">Presence</div><h2>Verification status</h2></div></div>
-          <div className="verification-summary"><div className="verify-icon"><ShieldCheck/></div><div><strong>{verifyState === "VERIFIED" ? "Presence Verified" : "Verification Required"}</strong><p>{verifyState === "VERIFIED" ? "Your latest presence check was successful." : "The backend can request verification approximately every 30 minutes."}</p></div></div>
-          <button className="btn btn-secondary btn-wide" onClick={() => setVerify(true)}>Open verification</button>
+          <div className="verification-summary"><div className="verify-icon"><ShieldCheck/></div><div><strong>{{
+            VERIFIED: "Presence Verified", UNVERIFIED: "Presence Unverified", PENDING: "Verification In Progress",
+          }[verifyState] ?? "Verification Required"}</strong><p>The backend requests verification automatically, about every 30 minutes. There is nothing for you to click unless a check is due.</p></div></div>
         </Card>
       </div>
-      <VerificationModal open={verify} state={verifyState} onClose={() => setVerify(false)} onVerify={doVerify}/>
     </>
   );
 }

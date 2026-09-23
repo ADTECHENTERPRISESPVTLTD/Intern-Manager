@@ -2,6 +2,8 @@ import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Bell, ChevronLeft, ChevronRight, CircleHelp, LogOut, Menu, ShieldCheck, X } from "lucide-react";
 import { navItems, adminNavItems, intern } from "../constants/app";
+import { PresenceVerification } from "../presence-verification";
+import { useVerificationStatus } from "../verificationContext";
 
 export default function AppLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -9,6 +11,7 @@ export default function AppLayout({ children }) {
   const [admin, setAdmin] = useState(false);
   const navigate = useNavigate();
   const items = admin ? adminNavItems : navItems;
+  const { service, setStatus, ready } = useVerificationStatus();
 
   return (
     <div className="app-shell">
@@ -47,6 +50,19 @@ export default function AppLayout({ children }) {
         </header>
         <div className="content">{children}</div>
       </main>
+
+      {/* Mounted once here (not per-page). Appears on its own when the backend says a check
+          is due; the intern never has to hunt for it on a specific page.
+          Waits for `ready` so it never polls before the (temporary, demo-only) login has a token —
+          polling too early would get a 401 and bounce the intern straight back to /login. */}
+      {ready && (
+        <PresenceVerification
+          service={service}
+          pollIntervalMs={3000}
+          onStatusChange={setStatus}
+          onSessionExpired={() => navigate("/login")}
+        />
+      )}
     </div>
   );
 }
