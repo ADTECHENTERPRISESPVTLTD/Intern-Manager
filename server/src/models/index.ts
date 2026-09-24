@@ -7,6 +7,7 @@ export { WorkSession, IWorkSession } from './WorkSession';
 export { BreakSession, IBreakSession } from './BreakSession';
 export { Attendance, IAttendance } from './Attendance';
 export { PresenceVerification, IPresenceVerification } from './PresenceVerification';
+export { FaceTemplate, IFaceTemplate } from './FaceTemplate';
 export { DailyReport, IDailyReport } from './DailyReport';
 export { PerformanceRecord, IPerformanceRecord } from './PerformanceRecord';
 export { DocumentModel, IDocument } from './Document';

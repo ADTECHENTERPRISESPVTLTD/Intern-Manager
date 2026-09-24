@@ -7,6 +7,7 @@ node_modules/
 .env.production
 
 # Build
+dist/
 server/dist/
 
 # IDE

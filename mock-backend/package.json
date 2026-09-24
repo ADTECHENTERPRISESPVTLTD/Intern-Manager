@@ -1,0 +1,18 @@
+{
+  "name": "mock-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "THROWAWAY mock of the Intern-Manager verification API, for demoing the presence-verification flow before the real backend exists.",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "multer": "^2.4.0"
+  }
+}
