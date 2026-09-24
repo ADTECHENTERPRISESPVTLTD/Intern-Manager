@@ -27,36 +27,94 @@ export const startWorkSession = async ({ internId }: { internId: string | Types.
 };
 
 export const heartbeatSession = async ({ sessionId, now = new Date() }: { sessionId: string | Types.ObjectId; now?: Date }) => {
-  const session = await WorkSession.findById(sessionId);
-  if (!session) {
-    throw new Error('Session not found');
+  // We perform an atomic update pattern to avoid double-counting when
+  // concurrent/duplicate heartbeats arrive. Attempt a few retries if a
+  // concurrent update races us.
+  let attempts = 0;
+  const maxAttempts = 3;
+
+  while (attempts < maxAttempts) {
+    const session = await WorkSession.findById(sessionId);
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    // Calculate how many whole seconds have elapsed since the last authoritative server heartbeat
+    const secondsSinceLast = Math.max(0, Math.floor((now.getTime() - session.lastHeartbeat.getTime()) / 1000));
+
+    // Only accrue time when session is ACTIVE and while under the official max
+    let secondsToAdd = 0;
+    if (session.status === SessionStatus.ACTIVE && session.activeSeconds < env.MAX_OFFICIAL_SECONDS) {
+      const remaining = Math.max(0, env.MAX_OFFICIAL_SECONDS - session.activeSeconds);
+      secondsToAdd = Math.min(secondsSinceLast, remaining);
+    }
+
+    const update: any = { $set: { lastHeartbeat: now } };
+    if (secondsToAdd > 0) {
+      update.$inc = { activeSeconds: secondsToAdd };
+    }
+
+    // Try to apply update only if lastHeartbeat hasn't changed in the meantime
+    const updated = await WorkSession.findOneAndUpdate({ _id: sessionId, lastHeartbeat: session.lastHeartbeat }, update, { new: true });
+
+    if (updated) {
+      // Recompute derived state based on the newly-updated activeSeconds
+      const state = calculateOfficialSessionState({
+        startedAt: updated.startedAt,
+        lastHeartbeat: updated.lastHeartbeat,
+        activeSeconds: updated.activeSeconds,
+        completedIntervals: updated.completedIntervals,
+        status: updated.status,
+        totalBreakSeconds: updated.totalBreakSeconds,
+        now,
+        maxOfficialSeconds: env.MAX_OFFICIAL_SECONDS,
+        intervalSeconds: env.SESSION_INTERVAL_SECONDS,
+      });
+
+      // Apply canonical values and persist
+      updated.activeSeconds = Math.min(state.officialActiveSeconds, env.MAX_OFFICIAL_SECONDS);
+      updated.completedIntervals = state.completedIntervals;
+      updated.status = state.status as SessionStatus;
+
+      if (state.status === 'COMPLETED') {
+        updated.endedAt = now;
+        updated.status = SessionStatus.COMPLETED;
+      }
+
+      await updated.save();
+      return updated;
+    }
+
+    // A concurrent update changed lastHeartbeat; retry to compute remaining time correctly
+    attempts += 1;
   }
 
-  const state = calculateOfficialSessionState({
-    startedAt: session.startedAt,
-    lastHeartbeat: session.lastHeartbeat,
-    activeSeconds: session.activeSeconds,
-    completedIntervals: session.completedIntervals,
-    status: session.status,
-    totalBreakSeconds: session.totalBreakSeconds,
+  // If retries exhausted, return latest session state (best-effort)
+  const finalSession = await WorkSession.findById(sessionId);
+  if (!finalSession) throw new Error('Session not found');
+
+  const finalState = calculateOfficialSessionState({
+    startedAt: finalSession.startedAt,
+    lastHeartbeat: finalSession.lastHeartbeat,
+    activeSeconds: finalSession.activeSeconds,
+    completedIntervals: finalSession.completedIntervals,
+    status: finalSession.status,
+    totalBreakSeconds: finalSession.totalBreakSeconds,
     now,
     maxOfficialSeconds: env.MAX_OFFICIAL_SECONDS,
     intervalSeconds: env.SESSION_INTERVAL_SECONDS,
   });
 
-  session.lastHeartbeat = now;
-  session.activeSeconds = Math.min(state.officialActiveSeconds, env.MAX_OFFICIAL_SECONDS);
-  session.completedIntervals = state.completedIntervals;
-  session.status = state.status as SessionStatus;
-
-  if (state.status === 'COMPLETED') {
-    session.endedAt = now;
-    session.status = SessionStatus.COMPLETED;
+  finalSession.activeSeconds = Math.min(finalState.officialActiveSeconds, env.MAX_OFFICIAL_SECONDS);
+  finalSession.completedIntervals = finalState.completedIntervals;
+  finalSession.status = finalState.status as SessionStatus;
+  if (finalState.status === 'COMPLETED') {
+    finalSession.endedAt = now;
+    finalSession.status = SessionStatus.COMPLETED;
   }
 
-  await session.save();
-
-  return session;
+  await finalSession.save();
+  return finalSession;
 };
 
 export const createAttendanceFromSession = async ({
